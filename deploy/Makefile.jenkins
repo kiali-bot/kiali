@@ -1,0 +1,64 @@
+BACKEND_RELEASING_BRANCH ?= "refs/heads/master"
+CONSOLE_LOCAL_DIR ?= "../kiali-ui"
+
+BACKEND_VERSION ?= $(shell sed -rn 's/^VERSION \?= v(.*)/\1/p' Makefile)
+BACKEND_BUMPED_VERSION ?= $(shell semver bump minor $(BACKEND_VERSION))
+
+BACKEND_FORK_URI ?= "git@github.com:kiali-bot/kiali.git"
+BACKEND_PULL_URI ?= "https://api.github.com/repos/israel-hdez/swscore/pulls" # TODO: Change owner repo
+
+BUMP_BRANCH_ID ?= $(BUILD_TAG)
+
+# Swagger not yet ready
+# backend-swagger:
+#	$(MAKE) make swagger-install"
+
+backend-bump-minor-version:
+	sed -i "s/^VERSION ?=.*/VERSION ?= v$(BACKEND_BUMPED_VERSION)-SNAPSHOT/" Makefile
+
+backend-build-release:
+	sed -i -r 's/^VERSION \?= (.*)-SNAPSHOT/VERSION \?= \1/' Makefile
+	$(MAKE) clean build
+
+backend-test:
+	$(MAKE) test-race
+
+backend-push-docker:
+ifndef DOCKER_USER
+	$(error DOCKER_USER environment variable is undefined)
+endif
+ifndef DOCKER_PASSWORD
+	$(error DOCKER_PASSWORD environment variable is undefined)
+endif
+	docker login -u "$(DOCKER_USER)" -p "$(DOCKER_PASSWORD)"
+	# TODO: Remove docker_name
+	DOCKER_NAME="edgarhz/kiali" \
+		    DOCKER_VERSION="v$(BACKEND_VERSION)" \
+		    CONSOLE_VERSION="local" \
+		    CONSOLE_LOCAL_DIR="$(CONSOLE_LOCAL_DIR)" \
+		    make docker-build docker-push
+
+backend-push-version-tag:
+	sed -i "s/^CONSOLE_VERSION ?=.*/CONSOLE_VERSION ?= $$(cat _output/docker/console/version.txt)/" Makefile
+	git add Makefile
+	git commit -m "Release $(BACKEND_VERSION)"
+	git tag "v$(BACKEND_VERSION)"
+	git push origin "refs/tags/v$(BACKEND_VERSION)"
+
+backend-create-pr-next-version:
+ifndef GH_TOKEN
+	$(error GH_TOKEN environment variable is undefined)
+endif
+	git checkout -b bumpVersion
+	sed -i "s/^CONSOLE_VERSION ?=.*/CONSOLE_VERSION ?= latest/" Makefile
+	sed -i -r "s/^VERSION \?= (.*)/VERSION \?= $(BACKEND_BUMPED_VERSION)-SNAPSHOT/" Makefile
+	git add Makefile
+	git commit -m "Prepare for next version"
+	git push $(BACKEND_FORK_URI) bumpVersion:$(BUMP_BRANCH_ID)
+	git $(BACKEND_RELEASING_BRANCH) master
+	git branch -D bumpVersion
+	curl -H "Authorization: token $(GH_TOKEN)" \
+	  -H "Content-Type: application/json" \
+	  -d '{"title": "Prepare for next version", "head": "kiali-bot:$(BUMP_BRANCH_ID)", "base": "master"}' \
+	  -X POST $(BACKEND_PULL_URI)
+
