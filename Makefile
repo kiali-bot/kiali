@@ -3,7 +3,7 @@ SHELL=/bin/bash
 
 # Identifies the current build.
 # These will be embedded in the app and displayed when it starts.
-VERSION ?= v0.10.0-SNAPSHOT
+VERSION ?= 0.11.0-SNAPSHOT
 COMMIT_HASH ?= $(shell git rev-parse HEAD)
 
 # Indicates which version of the UI console is to be embedded
@@ -13,7 +13,7 @@ COMMIT_HASH ?= $(shell git rev-parse HEAD)
 # WARNING: If you have previously run the 'docker' target but
 # later want to change the CONSOLE_VERSION then you must run
 # the 'clean' target first before re-running the 'docker' target.
-CONSOLE_VERSION ?= -local-5b7c069f7067ca030be4681577b1611d261c8456
+CONSOLE_VERSION ?= latest
 CONSOLE_LOCAL_DIR ?= ../../../../../kiali-ui
 
 # External Services Configuration
