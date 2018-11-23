@@ -13,7 +13,7 @@ COMMIT_HASH ?= $(shell git rev-parse HEAD)
 # WARNING: If you have previously run the 'docker' target but
 # later want to change the CONSOLE_VERSION then you must run
 # the 'clean' target first before re-running the 'docker' target.
-CONSOLE_VERSION ?= latest
+CONSOLE_VERSION ?= -local-5b7c069f7067ca030be4681577b1611d261c8456
 CONSOLE_LOCAL_DIR ?= ../../../../../kiali-ui
 
 # External Services Configuration
